@@ -1,6 +1,8 @@
 # public-pizza
 
-GitHub 上でドミノ・ピザを注文するためのリポジトリです。  
+GitHub 上でドミノ・ピザを注文するためのリポジトリです。
+
+解説記事「[GitHub Actions を回してピザを頼みたい - いなにわうどん](https://soudakyoto-ikou.hatenadiary.jp/entry/20231207/1701875647)」
 
 > [!NOTE]
 > 現時点で**マイドミノ** 1 つのみの注文に対応しています。同一のオプションの複数個選択は非対応です。
