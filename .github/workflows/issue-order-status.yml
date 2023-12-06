@@ -1,0 +1,49 @@
+name: issue-order-status
+
+on:
+  workflow_dispatch:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+      - name: Use cache
+        uses: actions/cache@v3
+        id: node_cache
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/yarn.lock') }}
+      - name: Install dependencies
+        if: ${{ steps.node_cache.outputs.cache-hit != 'true' }}
+        run: yarn install --frozen-lockfile
+      - name: Get issue number
+        run: echo "number=`gh search issues --repo "$REPO" --json number | jq '.[0].number'`" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+      - name: Get order status
+        run: |
+          {
+            echo 'message<<EOF'
+            npx ts-node ./src/index.ts order-status "$REPO" "$number"
+            echo EOF
+          } >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+      - name: Add comment
+        run: |
+          if [ -n "$message" ]; then
+            gh issue comment "$number" --repo "$REPO" --body "$message"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}

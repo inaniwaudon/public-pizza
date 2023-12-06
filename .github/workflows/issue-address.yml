@@ -1,0 +1,50 @@
+name: issue-address
+
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check the comment
+        run: |
+          if [[ "${{ github.event.comment.body }}" != *"- 配達指示："* ]]; then
+            exit 1
+          fi
+      - name: Setup node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+      - name: Use cache
+        uses: actions/cache@v3
+        id: node_cache
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/yarn.lock') }}
+      - name: Install dependencies
+        if: ${{ steps.node_cache.outputs.cache-hit != 'true' }}
+        run: yarn install --frozen-lockfile
+      - name: Get address
+        run: |
+          {
+            echo 'message<<EOF'
+            npx ts-node ./src/index.ts address "$REPO" "$NUMBER"
+            echo EOF
+          } >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+      - name: Add comment
+        run: |
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$message"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}

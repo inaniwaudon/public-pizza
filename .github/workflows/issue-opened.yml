@@ -1,0 +1,49 @@
+name: issue-opened
+
+on:
+  issues:
+    types: [opened]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+      - name: Use cache
+        uses: actions/cache@v3
+        id: node_cache
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/yarn.lock') }}
+      - name: Install dependencies
+        if: ${{ steps.node_cache.outputs.cache-hit != 'true' }}
+        run: yarn install --frozen-lockfile
+      - name: Get welcome message
+        run: |
+          {
+            echo 'welcome<<EOF'
+            npx ts-node ./src/index.ts welcome
+            echo EOF
+          } >> $GITHUB_ENV
+      - name: Get menu
+        run: |
+          {
+            echo 'menu<<EOF'
+            npx ts-node ./src/index.ts menu
+            echo EOF
+          } >> $GITHUB_ENV
+      - name: Add comment
+        run: |
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$welcome"
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$menu"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
